@@ -36,9 +36,30 @@ class ParserICHack():
         count_pos.subtract(count_neg)
         return count_pos
     
+    def other_day_default(self, count_result):
+        week = self.get_week()
+        week = [day for day in week if (day not in count_result and day.weekday() not in [5, 6])]
+        
+        return week
+
+    def get_week(self):
+        today = datetime.datetime.now()
+        today = datetime.date(today.year, today.month, today.day)
+        
+        return [today + timedelta(days=i) for i in range(1, 8)]
+                
+        
+    
     def get_best_date(self, n=1):
         count = self.count_result()
-        return count.most_common(n)
+        preferred = count.most_common(n)
+        print(preferred)
+        if len(preferred)>0:
+            if preferred[0][1] >= 0:
+                return preferred
+            else:
+                return self.other_day_default(count)
+        return preferred
     
     def merge_entities(self, doc):
         """Preprocess a spaCy doc, merging entities into a single token.
