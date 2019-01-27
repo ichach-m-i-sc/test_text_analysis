@@ -1,5 +1,7 @@
 import dateparser as dp
+import datefinder as df
 import datetime
+from datetime import timedelta
 import string
 import numpy as np
 import networkx as nx
@@ -34,9 +36,9 @@ class ParserICHack():
         count_pos.subtract(count_neg)
         return count_pos
     
-    def get_best_date(self):
+    def get_best_date(self, n=1):
         count = self.count_result()
-        return count.most_common(1)
+        return count.most_common(n)
     
     def merge_entities(self, doc):
         """Preprocess a spaCy doc, merging entities into a single token.
@@ -77,10 +79,6 @@ class ParserICHack():
             if entity.label_=="DATE":
                 date_in_sentence.append(entity.text)
         return date_in_sentence
-
-    # Date extraction
-    def time_convert(self, list_str_date):
-        return [dp.parse(w) for w in list_str_date]
 
     def get_attr(self, sentence, attribut):
         nsubj = []
@@ -149,7 +147,20 @@ class ParserICHack():
 
     def flatten(self, l):
         return [item for sublist in l for item in sublist]
-
+    
+    def date_finder_add(self, text):
+        dates = df.find_dates(text)
+        list_date = []
+        for date in dates:
+            list_date.append(datetime.date(date.year, date.month, date.day))
+        return list_date
+    
+    def date_convert(self, str_date):
+        timedate = dp.parse(str_date)
+        if timedate != None and timedate < datetime.datetime.now():
+            timedate = timedate + timedelta(days = 7)
+        return timedate
+        
     def extract(self, input_text):
         ## First Task, simple cleaning for preparing proper tokenize
         # input_text = tokenize(input_text)
@@ -165,8 +176,11 @@ class ParserICHack():
         for sentence in corrected.sents:
             # Spellcheck
             parse_sent = self.nlp(sentence.text)
+            # print(sentence.text)
             # Date extraction (as string)
             dates_str = self.get_date_sentence(parse_sent)
+            # print(dates_str)
+            # print("add _info: ", self.date_finder_add(sentence.text))
             # Extraction of subject and verbs (as token)
             subjects = self.get_attr(parse_sent, "nsubj")
             verbs = self.get_pos(parse_sent, "VERB")
@@ -175,7 +189,10 @@ class ParserICHack():
             graph = self.get_dep_graph(parse_sent)
             # Get the closest subjects and verbs
             subj_date = self.get_closest_relation(graph, dates_str, subjects)
+            # print(subj_date)
+            
             verb_date = self.get_closest_relation(graph, dates_str, verbs)
+            # print(verb_date)
             # Get all the negatives terms of the sentences
             negatives = [parse_sent[negate].text for negate in self.find_negated_wordSentIdxs_in_sent(parse_sent)]
 
@@ -184,8 +201,8 @@ class ParserICHack():
 
             pos_str += positive_time
             neg_str += negative_time
-            neg += [ (key[0], dp.parse(key[1])) for key in subj_date if key[1] in negative_time]
-            pos += [ (key[0], dp.parse(key[1])) for key in subj_date if key[1] in positive_time]
+            neg += [ (key[0], self.date_convert(key[1])) for key in subj_date if key[1] in negative_time]
+            pos += [ (key[0], self.date_convert(key[1])) for key in subj_date if key[1] in positive_time]
 
         return pos, neg, pos_str, neg_str
 
