@@ -1,9 +1,11 @@
 import dateparser as dp
+import datetime
 import string
 import numpy as np
 import networkx as nx
 import spacy
 from spacy_hunspell import spaCyHunSpell
+import collections
 
 
 class ParserICHack():
@@ -14,7 +16,28 @@ class ParserICHack():
         self.nlp.add_pipe(self.hunspell)
         self.nlp.add_pipe(self.merge_entities, name='merge_entities')
         self.exclude = set(string.punctuation)
-
+        self.date_pos = []
+        self.date_neg = []
+        
+    def reset_date(self):
+        self.date_pos = []
+        self.date_neg = []
+        
+    def manage_text(self, text):
+        pos, neg, pos_str, neg_str = self.extract(text)
+        self.date_pos += pos
+        self.date_neg += neg
+        
+    def count_result(self):
+        count_pos = collections.Counter([datetime.date(y.year, y.month, y.day) for (x, y) in self.date_pos])
+        count_neg = collections.Counter([datetime.date(y.year, y.month, y.day) for (x, y) in self.date_neg])
+        count_pos.subtract(count_neg)
+        return count_pos
+    
+    def get_best_date(self):
+        count = self.count_result()
+        return count.most_common(1)
+    
     def merge_entities(self, doc):
         """Preprocess a spaCy doc, merging entities into a single token.
         Best used with nlp.add_pipe(merge_entities).
