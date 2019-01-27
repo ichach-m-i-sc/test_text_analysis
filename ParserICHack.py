@@ -20,10 +20,12 @@ class ParserICHack():
         self.exclude = set(string.punctuation)
         self.date_pos = []
         self.date_neg = []
+        self.relation_date = []
         
     def reset_date(self):
         self.date_pos = []
         self.date_neg = []
+        self.relation_date = []
         
     def manage_text(self, text):
         pos, neg, pos_str, neg_str = self.extract(text)
@@ -53,13 +55,19 @@ class ParserICHack():
     def get_best_date(self, n=1):
         count = self.count_result()
         preferred = count.most_common(n)
-        print(preferred)
+        # print(preferred)
         if len(preferred)>0:
             if preferred[0][1] >= 0:
-                return [item[0] for item in preferred]
+                avail = self.get_availability(preferred[0][0])
+                return ([item[0] for item in preferred], avail)
             else:
-                return self.other_day_default(count)
-        return [item[0] for item in preferred]
+                return (self.other_day_default(count),  [])
+        
+        return ([item[0] for item in preferred], [])
+    
+    def get_availability(self, date):
+        # print(self.relation_date)
+        return [key[0] for key in self.relation_date if self.date_convert(key[1]) == date]
     
     def merge_entities(self, doc):
         """Preprocess a spaCy doc, merging entities into a single token.
@@ -178,9 +186,12 @@ class ParserICHack():
     
     def date_convert(self, str_date):
         timedate = dp.parse(str_date)
-        if timedate != None and timedate < datetime.datetime.now():
-            timedate = timedate + timedelta(days = 7)
-        return timedate
+        if timedate == None:
+            return None
+        else:
+            if timedate != None and timedate < datetime.datetime.now():
+                timedate = timedate + timedelta(days = 7)
+            return datetime.date(timedate.year, timedate.month, timedate.day)
         
     def filtered(self, sent):
         return [item for item in sent if item[1] != None]
@@ -214,7 +225,7 @@ class ParserICHack():
             # Get the closest subjects and verbs
             subj_date = self.get_closest_relation(graph, dates_str, subjects)
             # print(subj_date)
-            
+            self.relation_date += subj_date
             verb_date = self.get_closest_relation(graph, dates_str, verbs)
             # print(verb_date)
             # Get all the negatives terms of the sentences
