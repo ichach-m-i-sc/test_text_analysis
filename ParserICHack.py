@@ -161,6 +161,9 @@ class ParserICHack():
             timedate = timedate + timedelta(days = 7)
         return timedate
         
+    def filtered(self, sent):
+        return [item for item in sent if item[1] != None]
+
     def extract(self, input_text):
         ## First Task, simple cleaning for preparing proper tokenize
         # input_text = tokenize(input_text)
@@ -203,7 +206,9 @@ class ParserICHack():
             neg_str += negative_time
             neg += [ (key[0], self.date_convert(key[1])) for key in subj_date if key[1] in negative_time]
             pos += [ (key[0], self.date_convert(key[1])) for key in subj_date if key[1] in positive_time]
+            
+            
 
-        return pos, neg, pos_str, neg_str
+        return self.filtered(pos), self.filtered(neg), pos_str, neg_str
 
 
