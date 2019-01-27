@@ -56,10 +56,10 @@ class ParserICHack():
         print(preferred)
         if len(preferred)>0:
             if preferred[0][1] >= 0:
-                return preferred
+                return [item[0] for item in preferred]
             else:
                 return self.other_day_default(count)
-        return preferred
+        return [item[0] for item in preferred]
     
     def merge_entities(self, doc):
         """Preprocess a spaCy doc, merging entities into a single token.
